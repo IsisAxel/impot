@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impot Status</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <script>
+        const prefix = "http://localhost:8080/trano/api/trano";
+        
+        async function fetchArrondissements() {
+            const response = await fetch(`${prefix}/arrondissements`);
+            return response.json();
+        }
+
+        async function populateArrondissements() {
+            const arrondissements = await fetchArrondissements();
+            const arrondissementSelect = document.getElementById('arrondissementId');
+
+            arrondissements.forEach(arrondissement => {
+                const option = document.createElement('option');
+                option.value = arrondissement.id;
+                option.text = arrondissement.nom;
+                arrondissementSelect.appendChild(option);
+            });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const arrondissementId = urlParams.get('arrondissementId');
+            const annee = urlParams.get('annee');
+
+            if (arrondissementId) {
+                arrondissementSelect.value = arrondissementId;
+            }
+            if (annee) {
+                document.getElementById('annee').value = annee;
+            }
+
+            if (arrondissementId && annee) {
+                document.getElementById('impotForm').dispatchEvent(new Event('submit'));
+            }
+        }
+
+        async function fetchImpotStatus(event) {
+            event.preventDefault();
+
+            const arrondissementId = document.getElementById('arrondissementId').value;
+            const annee = document.getElementById('annee').value;
+
+            const response = await fetch(`${prefix}/arrondissementImpotDetails`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ arrondissementId, annee })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                alert(`Failed to fetch impots: ${errorText}`);
+                return;
+            }
+
+            const impots = await response.json();
+            const tableHead = document.getElementById('impotTableHead');
+            const tableBody = document.getElementById('impotTableBody');
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            const headerRow = document.createElement('tr');
+            const monthHeader = document.createElement('th');
+            monthHeader.textContent = 'Mois';
+            headerRow.appendChild(monthHeader);
+
+            const maisons = Object.values(impots)[0].map(maisonImpot => maisonImpot.maison);
+            maisons.forEach(maison => {
+                const maisonHeader = document.createElement('th');
+                maisonHeader.innerHTML = `<a href="impot.html?maisonId=${maison.id}&annee=${annee}">${maison.nom}</a>`;
+                headerRow.appendChild(maisonHeader);
+            });
+
+            tableHead.appendChild(headerRow);
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            monthNames.forEach(month => {
+                const row = document.createElement('tr');
+                const monthCell = document.createElement('td');
+                monthCell.textContent = month;
+                row.appendChild(monthCell);
+
+                if (impots[month]) {
+                    impots[month].forEach(maisonImpot => {
+                        const maisonCell = document.createElement('td');
+                        maisonCell.innerHTML = `${maisonImpot.paye ? '<p style="color:green">Déjà payé</p>' : '<p style="color:red">Non payé</p>'}${maisonImpot.montant.toFixed(2)}`;
+                        row.appendChild(maisonCell);
+                    });
+                } else {
+                    maisons.forEach(() => {
+                        const emptyCell = document.createElement('td');
+                        emptyCell.textContent = '-';
+                        row.appendChild(emptyCell);
+                    });
+                }
+
+                tableBody.appendChild(row);
+            });
+
+            const response2 = await fetch(`${prefix}/arrondissementImpot`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ arrondissementId, annee })
+            });
+
+            if (!response2.ok) {
+                const errorText = await response2.text();
+                alert(`Failed to fetch impots: ${errorText}`);
+                return;
+            }
+
+            const impots2 = await response2.json();
+            var diff = impots2[1] - impots2[0];
+            document.getElementById('totalPaye').textContent = `Total Payé: ${impots2[0]}`;
+            document.getElementById('totalAPaye').textContent = `Total à Payé: ${impots2[1]}`;
+            document.getElementById('reste').textContent = `Reste : ${diff}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', populateArrondissements);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Impot Status</h1>
+        <form id="impotForm" onsubmit="fetchImpotStatus(event)">
+            <div class="mb-3">
+                <label for="arrondissementId" class="form-label">Arrondissement</label>
+                <select id="arrondissementId" class="form-select" required></select>
+            </div>
+            <div class="mb-3">
+                <label for="annee" class="form-label">Annee</label>
+                <input type="number" id="annee" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Afficher</button>
+        </form>
+        <table class="table mt-4">
+            <thead id="impotTableHead">
+
+            </thead>
+            <tbody id="impotTableBody">
+
+            </tbody>
+        </table>
+        <div class="mt-4">
+            <p id="totalPaye">Total Payé: </p>
+            <p id="totalAPaye">Total Non Payé: </p>
+            <p id="reste">Reste : </p>
+        </div>
+
+        <button onclick="window.location.href='carte.html'" class="btn btn-primary">Voir la Carte</button>
+    </div>
+</body>
+</html>

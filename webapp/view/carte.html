@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+
+    <script>
+        const prefix = "http://localhost:8080/trano/api/trano";
+        document.addEventListener('DOMContentLoaded', async () => {
+            const response = await fetch(`${prefix}/carte`);
+            const message = await response.text();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = message;
+            document.body.appendChild(messageDiv);
+
+            // Execute the script tags in the fetched HTML
+            const scripts = messageDiv.getElementsByTagName('script');
+            for (let script of scripts) {
+                const newScript = document.createElement('script');
+                newScript.textContent = script.textContent;
+                document.body.appendChild(newScript);
+            }
+
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(map);
+
+            const drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            const drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polygon: true,
+                    marker: false,
+                    polyline: false,
+                    rectangle: false,
+                    circle: false,
+                    circlemarker: false
+                }
+            });
+            map.addControl(drawControl);
+
+            map.on(L.Draw.Event.CREATED, function (event) {
+    const layer = event.layer;
+    drawnItems.addLayer(layer);
+
+    let coordinates = layer.getLatLngs()[0].map(coord => ({
+        latitude: coord.lat,
+        longitude: coord.lng
+    }));
+
+    // Ensure the polygon is closed by adding the first point at the end if it's not already closed
+    if (coordinates.length > 0 && (coordinates[0].latitude !== coordinates[coordinates.length - 1].latitude || coordinates[0].longitude !== coordinates[coordinates.length - 1].longitude)) {
+        coordinates.push({
+            latitude: coordinates[0].latitude,
+            longitude: coordinates[0].longitude
+        });
+    }
+
+    const name = document.getElementById('arrondissement-name').value;
+
+    const arrondissement = {
+        nom: name,
+        geom: coordinates
+    };
+
+    fetch(`${prefix}/arrondissement`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(arrondissement)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Success:', data);
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+});
+
+            map.on('contextmenu', function(e) {
+                const latlng = e.latlng;
+                const url = `index.html?latitude=${latlng.lat}&longitude=${latlng.lng}`;
+                window.location.href = url;
+            });
+        });
+    </script>
+    <style>
+        #mapid {
+            height: 700px;
+        }
+    </style>
+</head>
+<body>
+    <div id="mapid" style="height: 700px;"></div>
+    <input type="text" id="arrondissement-name" placeholder="Nom de l'arrondissement" />
+    <button onclick="window.location.href='commune.html'" class="btn btn-primary">Voir Commune</button>
+</body>
+</html>
