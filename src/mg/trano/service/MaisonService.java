@@ -8,8 +8,8 @@ import mg.trano.model.Commune;
 import mg.trano.model.TypeCaracteristique;
 import mg.trano.model.dto.ImpotDetail;
 import mg.trano.model.dto.MaisonImpot;
+import mg.trano.util.Util;
 import mg.trano.model.Coordonne;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,14 +19,11 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.text.DateFormatSymbols;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MaisonService {
-
-    public static final double impotParMettreCarre = 3000.0; 
 
     public void insertMaison(Connection connection, Maison maison, Timestamp date) throws SQLException {
         String insertMaisonSQL = "INSERT INTO maison (nom, id_commune, geom) VALUES (?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)) RETURNING id";
@@ -284,15 +281,7 @@ public class MaisonService {
             try (ResultSet rs = pstmt.executeQuery()) {
             while (rs.next()) {
                 boolean paye = rs.getBoolean("paye");
-                Calendar calendar = Calendar.getInstance();
-                calendar.set(Calendar.YEAR, annee);
-                calendar.set(Calendar.MONTH, mois - 1);
-                calendar.set(Calendar.DAY_OF_MONTH, 1);
-                calendar.set(Calendar.HOUR_OF_DAY, 0); 
-                calendar.set(Calendar.MINUTE, 0);
-                calendar.set(Calendar.SECOND, 0);
-                calendar.set(Calendar.MILLISECOND, 0);
-                Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+                Timestamp timestamp = Util.generateTimestamp(annee, mois - 1, 1, 0);
                 Maison m = getMaisonById(connection, maisonId, timestamp);
                 BigDecimal montant = m.getImpot();
                 BigDecimal produitCoefficients = m.getProduitCoefficients();
@@ -311,15 +300,7 @@ public class MaisonService {
         impots[0] = BigDecimal.ZERO;
         impots[1] = BigDecimal.ZERO;
         Arrondissement arrondissement = new ArrondissementService().getById(connection, arrondissementId);
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.YEAR, annee);
-        calendar.set(Calendar.MONTH,11);
-        calendar.set(Calendar.DAY_OF_MONTH, 31);
-        calendar.set(Calendar.HOUR_OF_DAY, 23);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+        Timestamp timestamp = Util.generateTimestamp(annee, 11, 31, 23);
         List<Maison> maisons = getAllMaisons(connection,timestamp);
         List<Maison> maisonsInArrondissement = new ArrayList<>();
         for (Maison maison : maisons) {
@@ -344,15 +325,7 @@ public class MaisonService {
         BigDecimal[] impots = new BigDecimal[2]; // [0] = total payé, [1] = total à payer
         impots[0] = BigDecimal.ZERO;
         impots[1] = BigDecimal.ZERO;
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.YEAR, annee);
-        calendar.set(Calendar.MONTH,11);
-        calendar.set(Calendar.DAY_OF_MONTH, 31);
-        calendar.set(Calendar.HOUR_OF_DAY, 23);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+        Timestamp timestamp = Util.generateTimestamp(annee, 11, 31, 23);
         List<Maison> maisons = getAllMaisons(connection,timestamp);
         List<Maison> maisonsInCommune = new ArrayList<>();
         for (Maison maison : maisons) {
@@ -377,15 +350,7 @@ public class MaisonService {
         BigDecimal[] impots = new BigDecimal[2]; // [0] = total payé, [1] = total à payer
         impots[0] = BigDecimal.ZERO;
         impots[1] = BigDecimal.ZERO;
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.YEAR, annee);
-        calendar.set(Calendar.MONTH,11);
-        calendar.set(Calendar.DAY_OF_MONTH, 31);
-        calendar.set(Calendar.HOUR_OF_DAY, 23);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+        Timestamp timestamp = Util.generateTimestamp(annee, 11, 31,23);
         List<Maison> maisons = getAllMaisons(connection,timestamp);
         List<Maison> maisonsInCommune = new ArrayList<>();
         for (Maison maison : maisons) {
@@ -411,15 +376,7 @@ public class MaisonService {
         Arrondissement arrondissement = new ArrondissementService().getById(connection, arrondissementId);
 
         for (int mois = 1; mois <= 12; mois++) {
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.YEAR, annee);
-            calendar.set(Calendar.MONTH, mois - 1);
-            calendar.set(Calendar.DAY_OF_MONTH, 1);
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+            Timestamp timestamp = Util.generateTimestamp(annee, mois - 1, 1,0);
 
             List<Maison> maisons = getAllMaisons(connection, timestamp);
             List<MaisonImpot> maisonImpots = new ArrayList<>();
@@ -444,15 +401,7 @@ public class MaisonService {
         Map<String, List<MaisonImpot>> monthlyImpotDetails = new HashMap<>();
 
         for (int mois = 1; mois <= 12; mois++) {
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.YEAR, annee);
-            calendar.set(Calendar.MONTH, mois - 1);
-            calendar.set(Calendar.DAY_OF_MONTH, 1);
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+            Timestamp timestamp = Util.generateTimestamp(annee, mois - 1, 1,0);
 
             List<Maison> maisons = getAllMaisons(connection, timestamp);
             List<MaisonImpot> maisonImpots = new ArrayList<>();
@@ -477,15 +426,7 @@ public class MaisonService {
         Map<String, List<MaisonImpot>> monthlyImpotDetails = new HashMap<>();
     
         for (int mois = 1; mois <= 12; mois++) {
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.YEAR, annee);
-            calendar.set(Calendar.MONTH, mois - 1);
-            calendar.set(Calendar.DAY_OF_MONTH, 1);
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            Timestamp timestamp = new Timestamp(calendar.getTimeInMillis());
+            Timestamp timestamp = Util.generateTimestamp(annee, mois - 1, 1,0);
     
             List<Maison> maisons = getAllMaisons(connection, timestamp);
             List<MaisonImpot> maisonImpots = new ArrayList<>();
