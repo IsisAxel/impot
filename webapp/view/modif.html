@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modify Maison Etat</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <script>
+        const prefix = "http://localhost:8080/trano/api/trano";
+
+        async function fetchMaisons() {
+            const response = await fetch(`${prefix}/maisons`);
+            return response.json();
+        }
+
+        async function fetchMaison(id) {
+            const response = await fetch(`${prefix}/maison/${id}`);
+            return response.json();
+        }
+
+        async function fetchCaracteristiques() {
+            const response = await fetch(`${prefix}/caracteristiques`);
+            return response.json();
+        }
+
+        async function fetchTypeCaracteristiques() {
+            const response = await fetch(`${prefix}/typecaracteristiques`);
+            return response.json();
+        }
+
+        async function fetchProprietaires() {
+            const response = await fetch(`${prefix}/proprietaires`);
+            return response.json();
+        }
+
+        async function populateMaisonSelect() {
+            const maisons = await fetchMaisons();
+            const maisonSelect = document.getElementById('maisonSelect');
+
+            maisons.forEach(maison => {
+                const option = document.createElement('option');
+                option.value = maison.id;
+                option.text = maison.nom;
+                maisonSelect.appendChild(option);
+            });
+        }
+
+        async function populateProprietaireSelect() {
+            const proprietaires = await fetchProprietaires();
+            const proprietaireSelect = document.getElementById('proprietaireSelect');
+
+            proprietaires.forEach(proprietaire => {
+                const option = document.createElement('option');
+                option.value = proprietaire.id;
+                option.text = proprietaire.nom;
+                proprietaireSelect.appendChild(option);
+            });
+        }
+
+        async function populateForm(maison) {
+            document.getElementById('nom').value = maison.nom;
+            document.getElementById('longueur').value = maison.longueur;
+            document.getElementById('largeur').value = maison.largeur;
+            document.getElementById('longitude').value = maison.geom.longitude;
+            document.getElementById('latitude').value = maison.geom.latitude;
+            document.getElementById('etage').value = maison.etage;
+            document.getElementById('proprietaireSelect').value = maison.proprietaire.id;
+
+            const caracteristiques = await fetchCaracteristiques();
+            const typeCaracteristiques = await fetchTypeCaracteristiques();
+            const caracteristiquesContainer = document.getElementById('caracteristiquesContainer');
+
+            caracteristiquesContainer.innerHTML = ''; // Clear previous options
+
+            typeCaracteristiques.forEach(typeCaracteristique => {
+                const div = document.createElement('div');
+                div.classList.add('form-group');
+
+                const label = document.createElement('label');
+                label.textContent = `Caracteristique (${typeCaracteristique.nom}):`;
+                div.appendChild(label);
+
+                const select = document.createElement('select');
+                select.name = `caracteristique_${typeCaracteristique.id}`;
+                select.dataset.typeId = typeCaracteristique.id;
+                select.required = true;
+
+                caracteristiques
+                    .filter(caracteristique => caracteristique.typeCaracteristique.id === typeCaracteristique.id)
+                    .forEach(caracteristique => {
+                        const option = document.createElement('option');
+                        option.value = caracteristique.id;
+                        option.text = caracteristique.nom;
+                        if (maison.caracteristiques.some(c => c.id === caracteristique.id)) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+
+                div.appendChild(select);
+                caracteristiquesContainer.appendChild(div);
+            });
+        }
+
+        async function updateMaison(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('maisonSelect').value;
+            const longueur = parseFloat(document.getElementById('longueur').value);
+            const largeur = parseFloat(document.getElementById('largeur').value);
+            const etage = parseFloat(document.getElementById('etage').value);
+            const proprietaireId = parseInt(document.getElementById('proprietaireSelect').value);
+            const timestamp = document.getElementById('timestamp').value;
+
+            const caracteristiques = Array.from(document.querySelectorAll('[name^="caracteristique_"]')).map(select => ({
+                id: parseInt(select.value)
+            }));
+
+            const maison = {
+                longueur: longueur,
+                largeur: largeur,
+                etage: etage,
+                proprietaire: { id: proprietaireId },
+                caracteristiques: caracteristiques
+            };
+
+            const response = await fetch(`${prefix}/maison/${id}/etat?timestamp=${encodeURIComponent(timestamp)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(maison)
+            });
+
+            if (response.ok) {
+                alert('Maison updated successfully');
+            } else {
+                alert('Failed to update maison');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await populateMaisonSelect();
+            await populateProprietaireSelect();
+            document.getElementById('maisonSelect').addEventListener('change', async (event) => {
+                const maison = await fetchMaison(event.target.value);
+                populateForm(maison);
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Modify Maison Etat</h1>
+        <form id="maisonForm" onsubmit="updateMaison(event)">
+            <div class="form-group">
+                <label for="maisonSelect">Select Maison:</label>
+                <select id="maisonSelect" name="maisonSelect" required>
+                    <option value="" disabled selected>Select a maison</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="nom">Nom:</label>
+                <input type="text" id="nom" name="nom" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="longueur">Longueur:</label>
+                <input type="number" id="longueur" name="longueur" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="largeur">Largeur:</label>
+                <input type="number" id="largeur" name="largeur" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="longitude">Longitude:</label>
+                <input type="number" id="longitude" name="longitude" step="0.000000000000001" min="-180" max="180" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="latitude">Latitude:</label>
+                <input type="number" id="latitude" name="latitude" step="0.000000000000001" min="-90" max="90" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="etage">Etage:</label>
+                <input type="number" id="etage" name="etage" step="1" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="proprietaireSelect">Proprietaire:</label>
+                <select id="proprietaireSelect" name="proprietaireSelect" required>
+                    <option value="" disabled selected>Select a proprietaire</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="timestamp">Timestamp:</label>
+                <input type="datetime-local" id="timestamp" name="timestamp" required>
+            </div>
+
+            <div id="caracteristiquesContainer"></div>
+
+            <button type="submit">Update Maison</button>
+        </form>
+        <br>
+        <button onclick="window.location.href='carte.html'" class="btn btn-primary">Voir la Carte</button>
+    </div>
+</body>
+</html>
